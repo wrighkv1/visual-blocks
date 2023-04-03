@@ -1,0 +1,11 @@
+#!/bin/sh
+# 
+# Turnkey script to build the Python distribution package
+
+set -e
+
+builddir="build"
+srcdir="python"
+
+python3 -m build --outdir $builddir $srcdir
+find $builddir -type f
