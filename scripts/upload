@@ -1,0 +1,5 @@
+#!/bin/sh
+#
+# Upload package to PyPI
+
+twine upload --repository testpypi build/*
