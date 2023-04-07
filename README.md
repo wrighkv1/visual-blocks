@@ -12,10 +12,9 @@ notebooks. See the example notebooks in the directory [examples/](examples/).
 
 ## For Developers
 
+`!pip install git+https://...` in a notebook installs the package straight from
+the latest, unreleased source in Github. The notebooks in the [tests/](tests/)
+directory use this method.
+
 The directory [scripts/](scripts/) contains turnkey scripts for common
-developer tasks such as building the Python distribution package.
-
-Building the Python distribution package requires the Python package `build`.
-To install this dependency, run:
-
-    python3 -m pip install --upgrade build
+developer tasks such as building and uploading the Python distribution package.
