@@ -4,9 +4,9 @@ build-backend = "hatchling.build"
 
 [project]
 name = "visual_blocks"
-version = "0.0.3"
+version = "0.0.5"
 authors = [
-  { name="Jing Jin", email="jingjin@google.com" },
+  { name="Kristen Wright", email="kristenwright@google.com" },
 ]
 description = "Visual Blocks for Google Colaboratory"
 readme = "README.pypi.md"
