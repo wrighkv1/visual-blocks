@@ -10,6 +10,7 @@ from IPython import display
 from IPython.utils import io
 import json
 import logging
+import numpy as np
 import os
 import portpicker
 import requests
@@ -28,11 +29,31 @@ _VISUAL_BLOCKS_BUNDLE_VERSION = '1680912333'
 # in our usecase).
 logging.getLogger('werkzeug').disabled = True
 
+
 def js(script):
   display.display(display.Javascript(script))
 
+
 def html(script):
   display.display(display.HTML(script))
+
+
+def _json_to_ndarray(json_tensor):
+  """Convert a JSON dictionary from the web app to an np.ndarray."""
+  array = np.array(json_tensor['tensorValues'])
+  array.shape = json_tensor['tensorShape']
+  return array
+
+
+def _ndarray_to_json(array):
+  """Convert a np.ndarray to the JSON dictionary for the web app."""
+  values = array.ravel().tolist()
+  shape = array.shape
+  return {
+    'tensorValues': values,
+    'tensorShape': shape,
+  }
+
 
 def Server(
     generic_inference_fn = None,
@@ -48,20 +69,16 @@ def Server(
   Args:
     generic_inference_fn: A python function defined in the same colab notebook
       that takes a list of tensors, runs inference, and returns a list of
-      tensors.
+      tensors. This python function must take a single parameter which is a
+      tuple of numpy.ndarrays.
 
-      This python function should have a single parameter which is a list:
-      [
-        {
-          'tensorValues': <flattened tensor values>,
-          'tensorShape': <shape array>
-        }
-      ]
-      It should return a list of result tensors which has the same format
-      as above.
+      It must return tuple of tensors in the same format.
+
     text_to_text_inference_fn: A python function defined in the same colab
-      notebook that a string, runs inference, and returns a string.
+      notebook that takes a string, runs inference, and returns a string.
+
     height: The height of the embedded iFrame.
+
     tmp_dir: The tmp dir where the server stores the web app's static resources.
   """
 
@@ -103,14 +120,14 @@ def Server(
   @app.route('/apipost/inference', methods=['POST'])
   def inference():
     """Handler for the generic api endpoint."""
-    tensors = request.json['tensors']
+    input_tensors = [_json_to_ndarray(x) for x in request.json['tensors']]
     result = {}
     try:
       if generic_inference_fn is None:
         result = {'error': 'generic_inference_fn parameter is not set'}
       else:
-        inference_result = generic_inference_fn(tensors)
-        result['tensors'] = inference_result
+        output_tensors = generic_inference_fn(input_tensors)
+        result['tensors'] = [_ndarray_to_json(x) for x in output_tensors]
     except Exception as e:
       msg = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
       result = {'error': msg}
