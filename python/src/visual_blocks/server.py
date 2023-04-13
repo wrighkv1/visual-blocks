@@ -16,6 +16,7 @@ import requests
 import shutil
 import sys
 import threading
+import traceback
 import urllib.parse
 import zipfile
 
@@ -111,7 +112,8 @@ def Server(
         inference_result = generic_inference_fn(tensors)
         result['tensors'] = inference_result
     except Exception as e:
-      result = {'error': str(e)}
+      msg = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+      result = {'error': msg}
     finally:
       resp = make_response(json.dumps(result))
       resp.headers['Content-Type'] = 'application/json'
