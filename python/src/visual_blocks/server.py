@@ -55,10 +55,29 @@ def _ndarray_to_json(array):
   }
 
 
-def Server(
-    inference_fn,
-    height = 900,
-    tmp_dir = '/tmp'):
+def _make_json_response(obj):
+  body = json.dumps(obj)
+  resp = make_response(body)
+  resp.headers['Content-Type'] = 'application/json'
+  return resp
+
+
+def _ensure_iterable(x):
+  """Turn x into an iterable if not already iterable, unless it is None."""
+  if x is None or hasattr(x, '__iter__'):
+    return x
+  else:
+    return (x,)
+
+
+def _find_fn(name:str, functions):
+  """Find a function in a list of functions by its string name."""
+  names = [fn.__name__ for fn in functions]
+  i = names.index(name)
+  return functions[i]
+
+
+def Server(generic=None, text_to_text=None, height=900, tmp_dir='/tmp'):
   """Creates a server that serves visual blocks web app in an iFrame.
 
   Other than serving the web app, it will also listen to requests sent from the
@@ -66,20 +85,30 @@ def Server(
   data in the request body to call the corresponding functions passed in.
 
   Args:
-    inference_fn: A Python function, defined in the same Colab notebook,
-      which Visual Blocks calls to implement a model runner block.
+    generic:
+      A function or iterable of functions, defined in the same Colab notebook,
+      that Visual Blocks can call to implement a generic model runner block.
 
-      A generic inference_fn must take a single argument, input tensors as a
-      list of numpy.ndarrays; run inference; and return output tensors, also as
-      a list of numpy.ndarrays.
+      A generic inference function must take a single argument, the input
+      tensors as an iterable of numpy.ndarrays; run inference; and return the output
+      tensors, also as an iterable of numpy.ndarrays.
 
-      An inference_fn for a text-to-text block must take a string and return
-      a string.
+    text_to_text:
+      A function or iterable of functions, defined in the same Colab notebook,
+      that Visual Blocks can call to implement a text-to-text model runner
+      block.
 
-    height: The height of the embedded iFrame.
+      A text_to_text function must take a string and return a string.
 
-    tmp_dir: The tmp dir where the server stores the web app's static resources.
+    height:
+      The height of the embedded iFrame.
+
+    tmp_dir:
+      The tmp dir where the server stores the web app's static resources.
   """
+
+  generic = _ensure_iterable(generic)
+  text_to_text = _ensure_iterable(text_to_text)
 
   app = Flask(__name__)
 
@@ -115,37 +144,53 @@ def Server(
     with open(log_file_path, "a") as log_file:
       log_file.write("{}: {}\n".format(dt_string, msg))
 
+  @app.route('/api/list_inference_functions')
+  def list_inference_functions():
+    result = {}
+    if generic:
+      result['generic'] = [fn.__name__ for fn in generic]
+    if text_to_text:
+      result['text_to_text'] = [fn.__name__ for fn in text_to_text]
+    return _make_json_response(result)
+
   # Note: using "/api/..." for POST requests is not allowed.
   @app.route('/apipost/inference', methods=['POST'])
-  def inference():
+  def inference_generic():
     """Handler for the generic api endpoint."""
-    input_tensors = [_json_to_ndarray(x) for x in request.json['tensors']]
     result = {}
     try:
+      try:
+        inference_fn = _find_fn(request.json['function'], generic)
+      except KeyError:
+        # TODO: remove this fallback try-block after .js implments function key
+        inference_fn = generic[0]
+      input_tensors = [_json_to_ndarray(x) for x in request.json['tensors']]
       output_tensors = inference_fn(input_tensors)
       result['tensors'] = [_ndarray_to_json(x) for x in output_tensors]
     except Exception as e:
       msg = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
       result = {'error': msg}
     finally:
-      resp = make_response(json.dumps(result))
-      resp.headers['Content-Type'] = 'application/json'
-      return resp
+      return _make_json_response(result)
 
   # Note: using "/api/..." for POST requests is not allowed.
   @app.route('/apipost/inference_text_to_text', methods=['POST'])
   def inference_text_to_text():
     """Handler for the text_to_text api endpoint."""
-    text = request.json['text']
     result = {}
     try:
+      try:
+        inference_fn = _find_fn(request.json['function'], text_to_text)
+      except KeyError:
+        # TODO: remove this fallback try-block after .js implments function key
+        inference_fn = text_to_text[0]
+      text = request.json['text']
       result['text'] = inference_fn(text)
     except Exception as e:
-      result = {'error': str(e)}
+      msg = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+      result = {'error': msg}
     finally:
-      resp = make_response(json.dumps(result))
-      resp.headers['Content-Type'] = 'application/json'
-      return resp
+      return _make_json_response(result)
 
   @app.route('/<path:path>')
   def get_static(path):
