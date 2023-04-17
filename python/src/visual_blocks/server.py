@@ -56,8 +56,7 @@ def _ndarray_to_json(array):
 
 
 def Server(
-    generic_inference_fn = None,
-    text_to_text_inference_fn = None,
+    inference_fn,
     height = 900,
     tmp_dir = '/tmp'):
   """Creates a server that serves visual blocks web app in an iFrame.
@@ -67,15 +66,15 @@ def Server(
   data in the request body to call the corresponding functions passed in.
 
   Args:
-    generic_inference_fn: A python function defined in the same colab notebook
-      that takes a list of tensors, runs inference, and returns a list of
-      tensors. This python function must take a single parameter which is a
-      tuple of numpy.ndarrays.
+    inference_fn: A Python function, defined in the same Colab notebook,
+      which Visual Blocks calls to implement a model runner block.
 
-      It must return tuple of tensors in the same format.
+      A generic inference_fn must take a single argument, input tensors as a
+      list of numpy.ndarrays; run inference; and return output tensors, also as
+      a list of numpy.ndarrays.
 
-    text_to_text_inference_fn: A python function defined in the same colab
-      notebook that takes a string, runs inference, and returns a string.
+      An inference_fn for a text-to-text block must take a string and return
+      a string.
 
     height: The height of the embedded iFrame.
 
@@ -123,11 +122,8 @@ def Server(
     input_tensors = [_json_to_ndarray(x) for x in request.json['tensors']]
     result = {}
     try:
-      if generic_inference_fn is None:
-        result = {'error': 'generic_inference_fn parameter is not set'}
-      else:
-        output_tensors = generic_inference_fn(input_tensors)
-        result['tensors'] = [_ndarray_to_json(x) for x in output_tensors]
+      output_tensors = inference_fn(input_tensors)
+      result['tensors'] = [_ndarray_to_json(x) for x in output_tensors]
     except Exception as e:
       msg = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
       result = {'error': msg}
@@ -143,10 +139,7 @@ def Server(
     text = request.json['text']
     result = {}
     try:
-      if text_to_text_inference_fn is None:
-        result = {'error': 'text_to_text_inference_fn parameter is not set'}
-      else:
-        result['text'] = text_to_text_inference_fn(text)
+      result['text'] = inference_fn(text)
     except Exception as e:
       result = {'error': str(e)}
     finally:
