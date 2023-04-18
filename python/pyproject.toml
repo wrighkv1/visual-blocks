@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "visual_blocks"
-version = "0.0.6"
+version = "0.0.7"
 authors = [
   { name="Kristen Wright", email="kristenwright@google.com" },
 ]

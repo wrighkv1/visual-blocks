@@ -7,7 +7,7 @@ Visual Blocks is a framework that allows any platform or application to easily i
 
 **Node Graph Editor**
 
-The node graph editor is a custom Angular component. It takes a graph json file as input. 
+The node graph editor is a custom Angular component. It takes a graph json file as input.
 
 **Library of ML Nodes**
 
@@ -53,10 +53,11 @@ $ python3 -m pip install twine
 Steps:
 
 1. Update the version number in [pyproject.toml](python/pyproject.toml).
+1. Run `rm -rf build` to clean up previous builds.
 1. Run `scripts/package` to build the package.
 1. Run `scripts/upload` to upload the package. You need to have the username and
    password ready.
-   
+
 # Contributions
 
 We are not accepting contributions at this time. The Visual Blocks team will contribute to this library.
