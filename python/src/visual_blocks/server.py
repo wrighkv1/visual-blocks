@@ -21,7 +21,7 @@ import traceback
 import urllib.parse
 import zipfile
 
-_VISUAL_BLOCKS_BUNDLE_VERSION = '1680912333'
+_VISUAL_BLOCKS_BUNDLE_VERSION = '1681788147'
 
 # Disable logging from werkzeug.
 #
